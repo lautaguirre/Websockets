@@ -1,30 +1,46 @@
 import React, { Component } from 'react';
 import io from 'socket.io-client';
 
-import logo from './logo.svg';
 import './App.css';
 
+const socket = io('http://192.168.1.2:3001');
+
 class App extends Component {
-  componentDidMount() {
-    const socket = io('http://localhost:3001');
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      message: '',
+      textArea: ''
+    }
+
+    this.sendMessage = this.sendMessage.bind(this);
+
+    socket.on('chat message', (msg) => this.setState((prevState) => ({ textArea: `${prevState.textArea}\n${msg}` })));
+  }
+
+  sendMessage(e) {
+    e.preventDefault();
+
+    socket.emit('chat message', this.state.message);
+
+    this.setState({ message: '' });
   }
 
   render() {
     return (
       <div className="App">
         <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            Edit <code>src/App.js</code> and save to reload.
-          </p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
+          <form onSubmit={this.sendMessage}>
+            <input
+              type="text"
+              placeholder="Send a message"
+              onChange={(e) => this.setState({ message: e.target.value })}
+              value={this.state.message}
+            />
+            <button type="submit" >Send</button>
+          </form>
+          <textarea value={this.state.textArea} readOnly rows={10} cols={30} />
         </header>
       </div>
     );
