@@ -2,29 +2,22 @@ const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
-const MongoClient = require('mongodb').MongoClient;
-const assert = require('assert');
+const mongoose = require('mongoose');
 
 const url = 'mongodb://localhost:27017/test';
-MongoClient.connect(url, (err, db) => {
-  assert.equal(null, err);
-  console.log('Connection succcess');
 
-  var collection = db.db('test').collection('users');
-
-  collection.insertMany([
-    {a : 1},
-    {a : 2},
-    {a : 3}
-  ], function(err, result) {
-    assert.equal(err, null);
-    assert.equal(3, result.result.n);
-    assert.equal(3, result.ops.length);
-    console.log("Inserted 3 documents into the collection");
-  });
-
-  db.close();
+mongoose.connect(url);
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', () => {
+  console.log('connected to mongo');
 });
+
+const MessageSchema = new mongoose.Schema({
+  message: String
+});
+
+const Message = mongoose.model('Message', MessageSchema);
 
 const app = express();
 
@@ -47,9 +40,27 @@ app.use('/', indexRouter);
 
 io.on('connection', (socket) => {
   console.log('connected user');
+  Message.find(function (err, messages) {
+    if (err) return console.error(err);
+
+    console.log(messages);
+
+    let allMessages = '';
+
+    messages.forEach((item) => {
+      allMessages += `${item.message}\n`;
+    });
+
+    io.emit('chat message', allMessages);
+  });
 
   socket.on('chat message', (msg) => {
-    db.
+    const message = new Message({ message: msg });
+
+    message.save(function (err, message) {
+      if (err) return console.error(err);
+      console.log('saved');
+    });
 
     io.emit('chat message', msg);
   });
